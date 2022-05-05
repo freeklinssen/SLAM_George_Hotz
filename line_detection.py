@@ -6,9 +6,9 @@ from extractor import extractor
 w = 1920//2
 h = 1080//2
 
-F = 1
-k = np.array([[F, 0, w//2], [0, F, h//2], [0, 0, F]])
-print(k)
+F = 270
+k = np.array([[F, 0, w//2], [0, F, h//2], [0, 0, 1]])
+
 display = display(w,h)
 orb = cv2.ORB_create()
 
@@ -18,10 +18,13 @@ fe = extractor(k)
 def process_frame(img):
   img = cv2.resize(img,(w, h))
   # print(img.shape)
+  print("okay")
+  matches, Rt = fe.extract(img)
 
-  matches = fe.extract(img)
-  print(len(matches))
+  print("Matches", len(matches))
 
+  #if Rt is None:
+   # return
 
 
   for pt1, pt2 in matches:
@@ -34,7 +37,7 @@ def process_frame(img):
   display.show(img)
   #cv2.imshow("image", img)
 
-  kp = fe.extract(img)
+
 
 
 
