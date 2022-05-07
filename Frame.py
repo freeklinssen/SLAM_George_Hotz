@@ -14,14 +14,14 @@ IRt = np.eye(4)
 def extractRt(E):
   W = np.mat([[0,-1,0],[1,0,0],[0,0,1]], dtype=float)
   U,d,Vt = np.linalg.svd(E)
-  print(U)
-  print(d)
-  print(Vt)
+  #print(U)
+  #print(d)
+  #print(Vt)
   assert np.linalg.det(U) > 0
   if np.linalg.det(Vt) > 0:
     Vt *= -1.0
   R = np.dot(np.dot(U, W), Vt)
-  print(R)
+  #print(R)
   if np.sum(R.diagonal()) < 0:
     R = np.dot(np.dot(U, W.T), Vt)
   t = U[:, 2]
@@ -79,21 +79,24 @@ def match_frames(f1, f2):
                               max_trials=200)
 
   pts = ret[inliers]
-  print(model.params)
+  #print(model.params)
   Rt = extractRt(model.params)
 
   return  Rt, idx1[inliers], idx2[inliers]
 
 
 class Frame( ):
-  def __init__(self, img, k):
+  def __init__(self, mapp, img, k):
     self.bf = cv2.BFMatcher(cv2.NORM_HAMMING)
     self.k = k
     self.kinv = np.linalg.inv(self.k)
+    self.pose = IRt
 
     pts, self.des = extract(img)
-    self.pose = IRt
     self.pts = normalize(self.kinv, pts)
+
+    self.id = len(mapp.frames)
+    mapp.frames.append(self)
 
 
     # matching
