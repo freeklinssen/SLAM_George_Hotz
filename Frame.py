@@ -61,9 +61,12 @@ def match_frames(f1, f2):
     if m.distance < 0.70 * n.distance:
       p1 = f1.pts[m.queryIdx]
       p2 = f2.pts[m.trainIdx]
-      ret.append((p1,  p2))
-      idx1.append(m.queryIdx)
-      idx2.append(m.trainIdx)
+      if np.linalg.norm(p1 - p2) < 0.1:
+        ret.append((p1, p2))
+        idx1.append(m.queryIdx)
+        idx2.append(m.trainIdx)
+
+
 
   assert len(ret) > 8
   ret= np.array(ret)

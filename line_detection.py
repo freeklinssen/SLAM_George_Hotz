@@ -64,6 +64,7 @@ def process_frame(img):
 
   #reject points without enough "paralax" and reject poinit behind the camera
   good_pts4d = (np.abs(pts4d[:, 3]) > 0.005) & (pts4d[:, 2] > 0)
+  #print(len(good_pts4d), sum(good_pts4d))
 
 
   for i, location in enumerate(pts4d):
@@ -96,7 +97,8 @@ def process_frame(img):
 
 
 if __name__ == "__main__":
-  cap = cv2.VideoCapture("SLAM_George_Hotz/test_countryroad.mp4")
+  cap = cv2.VideoCapture("SLAM_George_Hotz/test_videos/test_drone.mp4")
+  #cap = cv2.VideoCapture("SLAM_George_Hotz/test_videos/test_countryroad.mp4")
   while cap.isOpened():
     ret, frame = cap.read()
     if ret == True:
