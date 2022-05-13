@@ -8,9 +8,7 @@ from display import display
 import numpy as np
 from Frame import Frame, denormalize, match_frames
 
-import OpenGL.GL as gl
-import pangolin
-from multiprocessing import Process, Queue
+from pointmap  import Map, Point
 #import g2o
 
 w = 1920//2
@@ -18,99 +16,14 @@ h = 1080//2
 
 F = 270
 k = np.array([[F, 0, w//2], [0, F, h//2], [0, 0, 1]])
+kinv = np.linalg.inv(k)
 
-display = display(w,h)
 
 # global map
-class Map(object):
-  def __init__(self):
-    self.frames = []
-    self.points = []
-
-    #create viewer proces
-    #elf.q = Queue()
-    #self.viewer = Process(target=self.viewer_thread, args=(self.q,))
-    #self.viewer.deamon = True
-    #self.viewer.start()
-    self.viewer_init()
-    self.state = None
-    self.q =Queue()
-    p = Process(target = self.viewer_thread, arg =(self.q,))
-    p.daemon = True
-    p.start()
-
-  def viewer_thread(self, q):
-    self.viewer_init()
-    while 1:
-      self.viewer_refresh(q)
-
-
-  def viewer_init(self):
-
-    pangolin.CreateWindowAndBind('Main', 640, 480)
-    gl.glEnable(gl.GL_DEPTH_TEST)
-
-    self.scam = pangolin.OpenGlRenderState(
-      pangolin.ProjectionMatrix(640, 480, 420, 420, 320, 240, 0.2, 100),
-      pangolin.ModelViewLookAt(-2, 2, -2, 0, 0, 0, pangolin.AxisDirection.AxisY))
-    self.handler = pangolin.Handler3D(self.scam)
-
-    # Create Interactive View in window
-    self.dcam = pangolin.CreateDisplay()
-    self.dcam.SetBounds(0.0, 1.0, 0.0, 1.0, -640.0 / 480.0)
-    self.dcam.SetHandler(self.handler)
-
-    self.state = None
-
-  def viewer_refresh(self):
-      #if self.state is None or not q.empty():
-        #state = q.get(True)
-      ppts = np.array(d[:3, 3] for d in self.state[0])
-      spts = np.array([self.state[1]])
-      print(ppts.shape)
-      print(spts.shape)
-
-      gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-      gl.glClearColor(1.0, 1.0, 1.0, 1.0)
-      self.dcam.Activate(self.scam)
-
-
-      gl.glPointSize(10)
-      gl.glColor3f(0.0, 1.0, 0.0)
-      pangolin.DrawPoins(ppts)
-
-      gl.glPointSize(2)
-      gl.glColor3f(0.0, 1.0, 0.0)
-      pangolin.DrawPoins(spts)
-
-      pangolin.FinishFrame()
-
-  def display(self ):
-    poses, pts  = [], []
-    for f in self.frames:
-      poses.append(f.pose)
-    for p in self.points:
-      pts.append(p.location)
-    self.q.put((poses, pts))
-
     #self.viewer_refresh()
 
 mapp = Map()
-
-class Point(object):
-  # point is a 3-D point in the world
-  # each point is observed in muliple frames
-  def __init__(self, mapp, location):
-    self.location = location
-    self.frames = []
-    self.index = []
-
-    self.id = len(mapp.points)
-    mapp.points.append(self)
-
-  def add_observation(self, frame, index):
-    self.frames.append(frame)
-    self.index.append(index)
+display = display(w,h)
 
 
 
@@ -163,9 +76,10 @@ def process_frame(img):
     cv2.circle(img, (u2, v2), color=(0, 0, 255), radius=3)
     cv2.line(img, (u1,v1), (u2, v2), color=(255, 0, 0))
 
-  #display.show(img)
-  mapp.display()
-  cv2.imshow("image", img)
+  if  display is not None:
+    display.show(img)
+  #mapp.display()
+  #cv2.imshow("image", img)
 
 
 
