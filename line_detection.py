@@ -1,7 +1,16 @@
+import sys
+
+#sys.path.append("pangolin")
+
+
 import cv2
 from display import display
 import numpy as np
-from Frame import Frame, denormalize, match_frames, IRt
+from Frame import Frame, denormalize, match_frames
+
+import OpenGL.GL as gl
+import pangolin
+from multiprocessing import Process, Queue
 #import g2o
 
 w = 1920//2
@@ -18,11 +27,73 @@ class Map(object):
     self.frames = []
     self.points = []
 
+    #create viewer proces
+    #elf.q = Queue()
+    #self.viewer = Process(target=self.viewer_thread, args=(self.q,))
+    #self.viewer.deamon = True
+    #self.viewer.start()
+    self.viewer_init()
+    self.state = None
+    self.q =Queue()
+    p = Process(target = self.viewer_thread, arg =(self.q,))
+    p.daemon = True
+    p.start()
+
+  def viewer_thread(self, q):
+    self.viewer_init()
+    while 1:
+      self.viewer_refresh(q)
+
+
+  def viewer_init(self):
+
+    pangolin.CreateWindowAndBind('Main', 640, 480)
+    gl.glEnable(gl.GL_DEPTH_TEST)
+
+    self.scam = pangolin.OpenGlRenderState(
+      pangolin.ProjectionMatrix(640, 480, 420, 420, 320, 240, 0.2, 100),
+      pangolin.ModelViewLookAt(-2, 2, -2, 0, 0, 0, pangolin.AxisDirection.AxisY))
+    self.handler = pangolin.Handler3D(self.scam)
+
+    # Create Interactive View in window
+    self.dcam = pangolin.CreateDisplay()
+    self.dcam.SetBounds(0.0, 1.0, 0.0, 1.0, -640.0 / 480.0)
+    self.dcam.SetHandler(self.handler)
+
+    self.state = None
+
+  def viewer_refresh(self):
+      #if self.state is None or not q.empty():
+        #state = q.get(True)
+      ppts = np.array(d[:3, 3] for d in self.state[0])
+      spts = np.array([self.state[1]])
+      print(ppts.shape)
+      print(spts.shape)
+
+      gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+      gl.glClearColor(1.0, 1.0, 1.0, 1.0)
+      self.dcam.Activate(self.scam)
+
+
+      gl.glPointSize(10)
+      gl.glColor3f(0.0, 1.0, 0.0)
+      pangolin.DrawPoins(ppts)
+
+      gl.glPointSize(2)
+      gl.glColor3f(0.0, 1.0, 0.0)
+      pangolin.DrawPoins(spts)
+
+      pangolin.FinishFrame()
+
   def display(self ):
+    poses, pts  = [], []
     for f in self.frames:
-      print(f.id)
-      print(f.pose)
-      print(" ")
+      poses.append(f.pose)
+    for p in self.points:
+      pts.append(p.location)
+    self.q.put((poses, pts))
+
+    #self.viewer_refresh()
 
 mapp = Map()
 
@@ -55,9 +126,9 @@ def process_frame(img):
 
   Rt, idx1, idx2 = match_frames(f1, f2)
   f1.pose = np.dot(Rt, f2.pose)
-  #print(pts)
+  #print(f1.pose)
   #print(Rt)
-  #print(IRt)
+  #print(f2.pose)
 
   # triangulate
   pts4d = cv2.triangulatePoints(f1.pose[:3], f2.pose[:3], f1.pts[idx1].T, f2.pts[idx2].T).T
@@ -92,11 +163,9 @@ def process_frame(img):
     cv2.circle(img, (u2, v2), color=(0, 0, 255), radius=3)
     cv2.line(img, (u1,v1), (u2, v2), color=(255, 0, 0))
 
-  display.show(img)
+  #display.show(img)
   mapp.display()
-  #cv2.imshow("image", img)
-
-
+  cv2.imshow("image", img)
 
 
 
