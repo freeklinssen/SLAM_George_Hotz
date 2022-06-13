@@ -35,7 +35,7 @@ def extractRt(E):
 
 def extract(img):
   orb = cv2.ORB_create()
-  pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), 3000, qualityLevel= 0.01, minDistance=3)
+  pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), 1000, qualityLevel= 0.01, minDistance=10)
   #extraction retrun points and des
   kps = [cv2.KeyPoint(x= f[0][0], y=f[0][1], _size=20) for f in pts]
   kps, des = orb.compute(img, kps)

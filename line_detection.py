@@ -14,7 +14,7 @@ from pointmap  import Map, Point
 w = 1920//2
 h = 1080//2
 
-F = 270
+F = 700
 k = np.array([[F, 0, w//2], [0, F, h//2], [0, 0, 1]])
 kinv = np.linalg.inv(k)
 
@@ -97,7 +97,7 @@ def process_frame(img):
 
 
 if __name__ == "__main__":
-  cap = cv2.VideoCapture("SLAM_George_Hotz/test_videos/test_drone.mp4")
+  cap = cv2.VideoCapture("SLAM_George_Hotz/test_videos/test_ohio.mp4")
   #cap = cv2.VideoCapture("SLAM_George_Hotz/test_videos/fest_countryroad.mp4")
   while cap.isOpened():
     ret, frame = cap.read()
