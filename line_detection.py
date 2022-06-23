@@ -8,13 +8,14 @@ from display import display
 import numpy as np
 from Frame import Frame, denormalize, match_frames
 
-from pointmap  import Map, Point
+from pointmap import Map, Point
 #import g2o
 
 w = 1920//2
 h = 1080//2
 
-F = 700
+F = 800
+#calibration matrix, part of the intrinsic matrix
 k = np.array([[F, 0, w//2], [0, F, h//2], [0, 0, 1]])
 kinv = np.linalg.inv(k)
 
@@ -49,6 +50,7 @@ def process_frame(img):
   f1 = mapp.frames[-1]
   f2 = mapp.frames[-2]
 
+# Rt is the intrinsic matrix, maps 3d point to pixel ip photo
   Rt, idx1, idx2 = match_frames(f1, f2)
   f1.pose = np.dot(Rt, f2.pose)
 

@@ -12,6 +12,7 @@ IRt = np.eye(4)
 
 
 def extractRt(E):
+  # extract from the essential matrix the extrinsic matrix
   W = np.mat([[0,-1,0],[1,0,0],[0,0,1]], dtype=float)
   U,d,Vt = np.linalg.svd(E)
   #print(U)
@@ -29,13 +30,20 @@ def extractRt(E):
   ret[:3, :3] = R
   ret[:3, 3] = t
 
+  #essential matrix is translation matrix times the rotation matrix  (TxR)
+  # fundametal metrix is essental matrix with two times the dot product with the intrisic/calibration matrix
+  # so wath we do here is extracting the rotation matrix and the transation matrix (or vector) from the essentail matrix
+
+  # return the extrinsic matrix = the roation and and translation vector in one
+  # projection matrix is extrinsic matrix and intrinsic/calibration matrix together
+
   #Rt = np.concatenate([R, t.reshape(3,1)], axis = 1)
   return ret
 
 
 def extract(img):
   orb = cv2.ORB_create()
-  pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), 1000, qualityLevel= 0.01, minDistance=10)
+  pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), 1000, qualityLevel= 0.01, minDistance=7)
   #extraction retrun points and des
   kps = [cv2.KeyPoint(x= f[0][0], y=f[0][1], _size=20) for f in pts]
   kps, des = orb.compute(img, kps)
@@ -58,10 +66,13 @@ def match_frames(f1, f2):
   matches = bf.knnMatch(f1.des, f2.des, k=2)
 
   for m, n in matches:
-    if m.distance < 0.70 * n.distance:
+    if m.distance < 0.75 * n.distance:
       p1 = f1.pts[m.queryIdx]
       p2 = f2.pts[m.trainIdx]
-      if np.linalg.norm(p1 - p2) < 0.1:
+
+
+      # travel les than 10% of diagonal and be in orb distance 32
+      if np.linalg.norm((p1 - p2)) < 0.2 * np.linalg.norm([f1.w, f1.h]) and m.distance <32:
         ret.append((p1, p2))
         idx1.append(m.queryIdx)
         idx2.append(m.trainIdx)
@@ -69,19 +80,21 @@ def match_frames(f1, f2):
 
 
   assert len(ret) > 8
-  ret= np.array(ret)
+  ret = np.array(ret)
   idx1 = np.array((idx1))
   idx2 = np.array((idx2))
 
 
   model, inliers = ransac((ret[:, 0], ret[:,1]),
-                              #skimage.transform.FundamentalMatrixTransform,
-                              skimage.transform.EssentialMatrixTransform,
+                              skimage.transform.FundamentalMatrixTransform,
+                              #skimage.transform.EssentialMatrixTransform,
                               min_samples=8,
-                              residual_threshold=0.005,
-                              max_trials=200)
+                              residual_threshold=0.001,
+                              max_trials=100)
 
-  pts = ret[inliers]
+  print(len(matches), len(inliers), sum(inliers))
+
+  #pts = ret[inliers]
   #print(model.params)
   Rt = extractRt(model.params)
 
@@ -92,6 +105,8 @@ class Frame( ):
   def __init__(self, mapp, img, k):
     self.bf = cv2.BFMatcher(cv2.NORM_HAMMING)
     self.k = k
+    if img is not None:
+      self.h, self.w = img.shape[0:2]
     self.kinv = np.linalg.inv(self.k)
     self.pose = IRt
 
