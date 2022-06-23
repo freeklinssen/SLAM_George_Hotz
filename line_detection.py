@@ -47,25 +47,35 @@ def process_frame(img):
   if frame.id == 0:
     return
 
+  #match with previous frame
+
   f1 = mapp.frames[-1]
   f2 = mapp.frames[-2]
 
 # Rt is the intrinsic matrix, maps 3d point to pixel ip photo
   Rt, idx1, idx2 = match_frames(f1, f2)
+
   f1.pose = np.dot(Rt, f2.pose)
+
+  #for i in range(f2.pts):
+   # if f2.pts[i] is not None:
+    #  f2.pts
+
 
   #print(f1.pose)
   #print(f1.pts)
   # triangulate
 
-  pts4d = triangulate(f1.pose, f2.pose, f1.pts[idx1], f2.pts[idx2])
+  pts4d = triangulate(f1.pose, f2.pose, f1.kps[idx1], f2.kps[idx2])
   # homogenious 3d coordinates (just make the last coordinate zero)
   pts4d /= pts4d[:, 3:]
   #print(pts4d)
 
 
   #reject points without enough "paralax" and reject poinit behind the camera
-  good_pts4d = (np.abs(pts4d[:, 3]) > 0.005) & (pts4d[:, 2] > 0)
+  unmatched_pts = np.array([f1.pts[i] is None for i in idx1]).astype(np.bool)
+  print(np.all(unmatched_pts))
+  good_pts4d = (np.abs(pts4d[:, 3]) > 0.005) & (pts4d[:, 2] > 0) & unmatched_pts
   #print(len(good_pts4d), sum(good_pts4d))
 
 
@@ -81,9 +91,9 @@ def process_frame(img):
 
 
 
-  print("Matches", len(f1.pts))
+  print("Matches", len(f1.kps))
 
-  for pt1, pt2 in zip(f1.pts[idx1], f2.pts[idx2]):
+  for pt1, pt2 in zip(f1.kps[idx1], f2.kps[idx2]):
     u1,v1 = denormalize(k, pt1)
     u2, v2 = denormalize(k, pt2)
     cv2.circle(img,(u1,v1), color = (0,255,0), radius=3)

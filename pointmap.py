@@ -15,8 +15,10 @@ class Point(object):
     mapp.points.append(self)
 
   def add_observation(self, frame, index):
+    frame.pts[index] = self
     self.frames.append(frame)
     self.index.append(index)
+
 
 
 

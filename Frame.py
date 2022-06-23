@@ -67,8 +67,8 @@ def match_frames(f1, f2):
 
   for m, n in matches:
     if m.distance < 0.75 * n.distance:
-      p1 = f1.pts[m.queryIdx]
-      p2 = f2.pts[m.trainIdx]
+      p1 = f1.kps[m.queryIdx]
+      p2 = f2.kps[m.trainIdx]
 
 
       # travel les than 10% of diagonal and be in orb distance 32
@@ -107,14 +107,17 @@ class Frame( ):
     self.k = k
     if img is not None:
       self.h, self.w = img.shape[0:2]
+
     self.kinv = np.linalg.inv(self.k)
     self.pose = IRt
 
-    pts, self.des = extract(img)
-    self.pts = normalize(self.kinv, pts)
+    kps, self.des = extract(img)
+    self.kps = normalize(self.kinv, kps)
+    self.pts = [None]*len(self.kps)
 
     self.id = len(mapp.frames)
     mapp.frames.append(self)
+
 
 
     # matching
