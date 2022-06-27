@@ -6,13 +6,21 @@ from multiprocessing import Process, Queue
 class Point(object):
   # point is a 3-D point in the world
   # each point is observed in muliple frames
-  def __init__(self, mapp, location):
+  def __init__(self, mapp, location, color):
     self.location = location
     self.frames = []
     self.index = []
+    self.color = color
 
-    self.id = len(mapp.points)
+
+    self.id = mapp.max_points
+    mapp.max_points += 1
     mapp.points.append(self)
+
+  def delete(self):
+    for f in self.frames:
+      f.pts[f.pts.index(self)] = None
+      del self
 
   def add_observation(self, frame, index):
     frame.pts[index] = self
@@ -27,6 +35,7 @@ class Map(object):
   def __init__(self):
     self.frames = []
     self.points = []
+    self.max_points = 0
 
     #self.viewer_init()
     self.state = None
@@ -34,6 +43,11 @@ class Map(object):
     #p = Process(target = self.viewer_thread, arg =(self.q,))
     #p.daemon = True
     #p.start()
+
+  """optimizer"""
+  #def optimizer:
+  #with g2o that iis not working ofcourse
+
 
   """
   def viewer_thread(self, q):

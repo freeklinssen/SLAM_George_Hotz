@@ -3,12 +3,19 @@ import numpy as np
 from skimage.measure import ransac
 import skimage
 
+#import g2o
+
 
 def add_ones(x):
   result = np.concatenate([x, np.ones((x.shape[0], 1))], axis=1)
   return result
 
-IRt = np.eye(4)
+def PoseRt(R,t):
+  ret = np.eye(4)
+  ret[:3, :3] = R
+  ret[:3, 3] = t
+  return ret
+
 
 
 def extractRt(E):
@@ -67,15 +74,16 @@ def match_frames(f1, f2):
 
   for m, n in matches:
     if m.distance < 0.75 * n.distance:
-      p1 = f1.kps[m.queryIdx]
-      p2 = f2.kps[m.trainIdx]
+      p1 = f1.kpus[m.queryIdx]
+      p2 = f2.kpus[m.trainIdx]
 
 
       # travel les than 10% of diagonal and be in orb distance 32
-      if np.linalg.norm((p1 - p2)) < 0.2 * np.linalg.norm([f1.w, f1.h]) and m.distance <32:
-        ret.append((p1, p2))
-        idx1.append(m.queryIdx)
-        idx2.append(m.trainIdx)
+      if np.linalg.norm((p1 - p2)) < 0.2 * np.linalg.norm([f1.w, f1.h]) and m.distance < 32:
+        if m.queryIdx not in idx1 and m.trainIdx not in idx2:
+          idx1.append(m.queryIdx)
+          idx2.append(m.trainIdx)
+          ret.append((p1, p2))
 
 
 
@@ -92,13 +100,13 @@ def match_frames(f1, f2):
                               residual_threshold=0.001,
                               max_trials=100)
 
-  print(len(matches), len(inliers), sum(inliers))
+  print(len(matches), len(inliers))
 
   #pts = ret[inliers]
   #print(model.params)
   Rt = extractRt(model.params)
 
-  return  Rt, idx1[inliers], idx2[inliers]
+  return Rt, idx1[inliers], idx2[inliers]
 
 
 class Frame( ):
@@ -109,11 +117,11 @@ class Frame( ):
       self.h, self.w = img.shape[0:2]
 
     self.kinv = np.linalg.inv(self.k)
-    self.pose = IRt
+    self.pose = np.eye(4)
 
-    kps, self.des = extract(img)
-    self.kps = normalize(self.kinv, kps)
-    self.pts = [None]*len(self.kps)
+    kpus, self.des = extract(img)
+    self.kpus = normalize(self.kinv, kpus)
+    self.pts = [None]*len(self.kpus)
 
     self.id = len(mapp.frames)
     mapp.frames.append(self)

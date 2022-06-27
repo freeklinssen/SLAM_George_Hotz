@@ -11,8 +11,8 @@ from Frame import Frame, denormalize, match_frames
 from pointmap import Map, Point
 #import g2o
 
-w = 1920//2
-h = 1080//2
+w, h = 1920//2, 1080//2
+#w, h = 1242, 375
 
 F = 800
 #calibration matrix, part of the intrinsic matrix
@@ -41,48 +41,64 @@ def triangulate( pose1, pose2, pts1, pts2):
   return ret
 
 def process_frame(img):
-  img = cv2.resize(img,(w, h))
+  img = cv2.resize(img,  (w, h))
   # print(img.shape)]
   frame = Frame(mapp, img, k)
   if frame.id == 0:
     return
 
+  print("\n***frame %d***", (frame.id))
+
   #match with previous frame
 
   f1 = mapp.frames[-1]
   f2 = mapp.frames[-2]
-
+  #print(f1.kps, f1.des)
 # Rt is the intrinsic matrix, maps 3d point to pixel ip photo
   Rt, idx1, idx2 = match_frames(f1, f2)
-
+  print(idx1, idx2)
   f1.pose = np.dot(Rt, f2.pose)
 
-  #for i in range(f2.pts):
-   # if f2.pts[i] is not None:
-    #  f2.pts
+  # filter out points we already used
+  for i, idx in enumerate(idx2):
+    if f2.pts[idx] is not None:
+      f2.pts[idx].add_observation(f1, idx1[i])
 
 
-  #print(f1.pose)
+
+  print("f1 pose:", f1.pose)
   #print(f1.pts)
-  # triangulate
+  #triangulate
 
-  pts4d = triangulate(f1.pose, f2.pose, f1.kps[idx1], f2.kps[idx2])
-  # homogenious 3d coordinates (just make the last coordinate zero)
+  good_pts4d = np.array([f1.pts[1] is None for i in idx1])
+
+  #homogenious 3d coordinates (just make the last coordinate zero)
+  pts4d = triangulate(f1.pose, f2.pose, f1.kpus[idx1], f2.kpus[idx2])
+  print(pts4d)
+  good_pts4d &= np.abs(pts4d[:, 3]) > 0.005
+
   pts4d /= pts4d[:, 3:]
-  #print(pts4d)
+  print(pts4d)
 
 
+  pts4d_lp = np.dot(np.linalg.inv(f1.pose), pts4d.T).T
+  good_pts4d &= pts4d_lp[:, 2] > 0
   #reject points without enough "paralax" and reject poinit behind the camera
-  unmatched_pts = np.array([f1.pts[i] is None for i in idx1]).astype(np.bool)
-  print(np.all(unmatched_pts))
-  good_pts4d = (np.abs(pts4d[:, 3]) > 0.005) & (pts4d[:, 2] > 0) & unmatched_pts
+  #unmatched_pts = np.array([f1.pts[i] is None for i in idx1])
+  #np.dot(f1.pose, pts4d)
+
+
+  #good_pts4d = (np.abs(pts4d[:, 3]) > 0.005) & (pts4d[:, 2] > 0) & unmatched_pts
+  print("adding: %d points" % np.sum(good_pts4d))
+
   #print(len(good_pts4d), sum(good_pts4d))
 
 
   for i, location in enumerate(pts4d):
     if not good_pts4d[i]:
       continue
-    pt = Point(mapp, location)
+    u,v = int(round(f1.kpus[idx1[i], 0])), int(round(f1.kpus[idx1[i], 1]))
+    pt = Point(mapp, location, img[u,v])
     pt.add_observation(f1, idx1[i])
     pt.add_observation(f2, idx2[i])
 
@@ -91,9 +107,9 @@ def process_frame(img):
 
 
 
-  print("Matches", len(f1.kps))
+  print("Matches", len(f1.kpus))
 
-  for pt1, pt2 in zip(f1.kps[idx1], f2.kps[idx2]):
+  for pt1, pt2 in zip(f1.kpus[idx1], f2.kpus[idx2]):
     u1,v1 = denormalize(k, pt1)
     u2, v2 = denormalize(k, pt2)
     cv2.circle(img,(u1,v1), color = (0,255,0), radius=3)
