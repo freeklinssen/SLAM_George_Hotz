@@ -2,6 +2,10 @@ import numpy as np
 import OpenGL.GL as gl
 import pangolin
 from multiprocessing import Process, Queue
+import json
+from helper import PoseRt
+
+
 
 class Point(object):
   # point is a 3-D point in the world
@@ -10,16 +14,21 @@ class Point(object):
     self.location = location
     self.frames = []
     self.index = []
-    self.color = color
+    self.color = np.copy(color)
 
+    self.id = mapp.add_observation(self)
 
-    self.id = mapp.max_points
-    mapp.max_points += 1
-    mapp.points.append(self)
+  def homogeneous(self):
+    return np.array([self.location[0], self.location[1], self.location[2], 1.0])
+
+  # 4:09:26
+  def orb(self):
+     return [f.des[idx] for f, idx in zip(self.frames, self.index)]
+
 
   def delete(self):
-    for f in self.frames:
-      f.pts[f.pts.index(self)] = None
+    for f, idx in zip(self.frames, self.index):
+      f.pts[idx] = None
       del self
 
   def add_observation(self, frame, index):
@@ -30,12 +39,73 @@ class Point(object):
 
 
 
-
 class Map(object):
   def __init__(self):
     self.frames = []
     self.points = []
-    self.max_points = 0
+    self.max_point = 0
+    self.max_frame = 0
+
+
+
+  def serialize(self):
+    ret = {}
+    ret["points"] = [{"pt": p.location, "id": p.id.topist(), "color": p.color.tolist()} for p in self.points]
+    for f in self.frames:
+      ret["frames"].append({
+        "id": f.id, "K": f.k, "pose": f.pose.tolist(), "h": f.h, "w": f.w,
+         "kpus": f.kpus.tolist(), "des": f.des.tolist(),
+         "pts": [p.id if p is not None else -1 for p in f.pts] })
+    ret["max_frames"] = self.max_frame
+    ret['max_points'] = self.max_point
+    return json.dumps(ret)
+
+  def deserialize(self, s):
+      ret = json.loads(s)
+      self.max_frame = ret['max_frame']
+      self.max_point = ret['max_point']
+      self.points = []
+      self.frames = []
+
+      pids = {}
+      for p in ret['points']:
+        pp = Point(self, p['pt'], p['color'], p['id'])
+        self.points.append(pp)
+        pids[p['id']] = pp
+
+      for f in ret['frames']:
+        ff = Frame(self, None, f['K'], f['pose'], f['id'])
+        ff.w, ff.h = f['w'], f['h']
+        ff.kpus = np.array(f['kpus'])
+        ff.des = np.array(f['des'])
+        ff.pts = [None] * len(ff.kpus)
+        for i, p in enumerate(f['pts']):
+          if p != -1:
+            ff.pts[i] = pids[p]
+        self.frames.append(ff)
+
+
+
+  def add_observation(self, point):
+    ret = self.max_point
+    self.max_point += 1
+    self.points.append(point)
+    return ret
+
+  def add_frame(self, frame):
+    ret = self.max_frame
+    self.max_frame += 1
+    self.frames.append(frame)
+    return ret
+
+
+  #def load(self):
+
+
+
+  #def save(self):
+   # for f in self.frames:
+
 
     #self.viewer_init()
     self.state = None

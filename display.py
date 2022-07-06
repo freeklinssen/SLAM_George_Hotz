@@ -1,7 +1,7 @@
 import sdl2
 import sdl2.ext
 
-class display():
+class display2d():
     def __init__(self, w, h):
         sdl2.ext.init()
         self.w, self.h = w, h
